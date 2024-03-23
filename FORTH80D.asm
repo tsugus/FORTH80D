@@ -12,7 +12,7 @@
 ; *                       i8086 & MS-DOS                       *
 ; *                                                            *
 ; *                                                            *
-; *                       Version 0.5.0                        *
+; *                       Version 0.5.1                        *
 ; *                                                            *
 ; *                                                            *
 ; *                                       (C) 2023-2024 Tsugu  *
@@ -162,9 +162,9 @@ WRM1:	DW	WARM
 ;
 ; ***** USER VARIABLES *****
 ;
-UVR:	DW	0		; not used
-	DW	0		; not used
-	DW	0		; not used
+UVR:	DW	0		; (release No.)
+	DW	5		; (revision No.)
+	DW	0100H		; (user version)
 	DW	INITS0		; S0
 	DW	INITR0		; R0
 	DW	INITS0		; TIB
@@ -3237,7 +3237,33 @@ ABORT:	DW	DOCOL
 ;-------------------------------------------
 	DW	CR
 	DW	PDOTQ
-	DB	19,"FORTH80D Ver. 0.5.0"
+	DB	14,'FORTH80D Ver. '
+	DW	TUVR
+	DW	ATT		; release No.
+	DW	ZERO,ZERO,DDOTR	; U. without spaces
+	DW	LIT,2EH		; '.' code
+	DW	EMIT
+	DW	TUVR
+	DW	LIT,2
+	DW	PLUS
+	DW	ATT		; revision No.
+	DW	ZERO,ZERO,DDOTR
+	; ----- OPTIONAL -----
+	DW	LIT,2EH		; '.' code
+	DW	EMIT
+	DW	TUVR
+	DW	LIT,5
+	DW	PLUS
+	DW	CAT		; major user version (0-255)
+	DW	ZERO,ZERO,DDOTR
+	; --------------------
+	DW	TUVR
+	DW	LIT,4
+	DW	PLUS
+	DW	CAT		; user version (0-25)
+	DW	LIT,41H		; 'A' code
+	DW	PLUS
+	DW	EMIT
 ;-------------------------------------------
 	DW	SPSTO
 	DW	DECA
@@ -3262,11 +3288,10 @@ MESS:	DW	DOCOL
 	DW	SLASH
 	DW	SUBB
 	DW	DLINE
-	DW	SPACE
 				;  THEN
 MESS3:	DW	BRAN,MESS2-$	; ELSE
 MESS1:	DW	PDOTQ
-	DB	6,'MSG # '
+	DB	5,'MSG #'
 	DW	DOT
 				; THEN
 MESS2:	DW	SEMIS
@@ -3520,7 +3545,7 @@ LIST:	DW	DOCOL
 	DW	SCR
 	DW	STORE
 	DW	PDOTQ
-	DB	7,'SCR  # '
+	DB	6,'SCR # '
 	DW	DOT
 	DW	OFSET
 	DW	ATT
