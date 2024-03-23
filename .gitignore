@@ -1,0 +1,10 @@
+Thumbs.db
+.DS_Store
+.vscode/
+main.dSYM/
+*.o
+*.a
+*.exe
+*.out
+main
+FORTH80.asm
