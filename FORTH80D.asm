@@ -12,7 +12,7 @@
 ; *                       i8086 & MS-DOS                       *
 ; *                                                            *
 ; *                                                            *
-; *                       Version 0.5.3                        *
+; *                       Version 0.5.4                        *
 ; *                                                            *
 ; *                                                            *
 ; *                                       (C) 2023-2024 Tsugu  *
@@ -164,7 +164,7 @@ WRM1	DW	WARM
 ;
 UVR	DW	0		; (release No.)
 	DW	5		; (revision No.)
-	DW	0300H		; (user version)
+	DW	0400H		; (user version)
 	DW	INITS0		; S0
 	DW	INITR0		; R0
 	DW	INITS0		; TIB
@@ -2116,7 +2116,7 @@ QSTAC	DW	DOCOL
 	DW	QERR
 	DW	SPAT
 	DW	HERE
-	DW	LIT,80H
+	DW	LIT,80H		; ( 128 bytes )
 	DW	PLUS
 	DW	ULESS
 	DW	LIT,7H
@@ -2777,7 +2777,7 @@ WORDS2	DW	INN
 	DW	SWAP
 	DW	ENCL
 	DW	HERE
-	DW	LIT,22H		; ( 22 bytes )
+	DW	LIT,22H		; ( 34 bytes )
 	DW	BLANK
 	DW	INN
 	DW	PSTOR
@@ -3384,7 +3384,7 @@ ARROW	DW	DOCOL
 	DW	ARROW-6
 IDDOT	DW	DOCOL
 	DW	PAD
-	DW	LIT,22H		; ( 22 bytes )
+	DW	LIT,22H		; ( 34 bytes )
 	DW	BLANK
 	DW	DUPE
 	DW	PFA
