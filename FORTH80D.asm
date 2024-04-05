@@ -12,7 +12,7 @@
 ; *                       i8086 & MS-DOS                       *
 ; *                                                            *
 ; *                                                            *
-; *                       Version 0.5.4                        *
+; *                       Version 0.5.5                        *
 ; *                                                            *
 ; *                                                            *
 ; *                                       (C) 2023-2024 Tsugu  *
@@ -50,12 +50,12 @@
 ;               |   .   |
 ;               | ----- |----
 ;          DP  v|   x   |  |  dictionary pointer (go under)
-;               |   .   |  |  word buffer (44H bytes)
+;               |   .   |  |  word buffer (70 bytes)
 ;               |   .   |  |
-;               | ----- | temporary buffer area (80H bytes)
-;         PAD  v| x+44H |  |
-;               |   :   |  |  text buffer (36H bytes)
-;               | x+79H |  |
+;               | ----- | temporary buffer area (151 bytes)
+;         PAD  v| x+46H |  |
+;               |   :   |  |  text buffer (81 bytes)
+;               | x+96H |  |
 ;               | ----- |----
 ;               |   .   |
 ;               |   .   |
@@ -127,6 +127,14 @@ UP	EQU	FIRST0-40H	; user variables area size = 40H
 INITR0	EQU	UP
 INITS0	EQU	INITR0-0A0H	; return stack size = A0H
 ;
+MXTOKN	EQU	34		; max bytes of tokens
+				;  (On 2-base,
+				;  'length' + '-' + "16-digits" + '.' + "16-digits")
+WRDBSZ	EQU	64+6		; word buffer size ( > C/L)
+PADSZ	EQU	80+1		; PAD size
+TMPBSZ	EQU	WRDBSZ+PADSZ	; temporary buffer area size
+;
+;
 ; ***************************************
 ;
 codeSeg	SEGMENT
@@ -164,7 +172,7 @@ WRM1	DW	WARM
 ;
 UVR	DW	0		; (release No.)
 	DW	5		; (revision No.)
-	DW	0400H		; (user version)
+	DW	0500H		; (user version)
 	DW	INITS0		; S0
 	DW	INITR0		; R0
 	DW	INITS0		; TIB
@@ -2116,7 +2124,7 @@ QSTAC	DW	DOCOL
 	DW	QERR
 	DW	SPAT
 	DW	HERE
-	DW	LIT,80H		; ( 128 bytes )
+	DW	LIT,TMPBSZ
 	DW	PLUS
 	DW	ULESS
 	DW	LIT,7H
@@ -2777,7 +2785,7 @@ WORDS2	DW	INN
 	DW	SWAP
 	DW	ENCL
 	DW	HERE
-	DW	LIT,22H		; ( 34 bytes )
+	DW	LIT,MXTOKN+2	; ( include a length byte and "margin" )
 	DW	BLANK
 	DW	INN
 	DW	PSTOR
@@ -3383,9 +3391,6 @@ ARROW	DW	DOCOL
 	DB	83H,'ID','.'+80H
 	DW	ARROW-6
 IDDOT	DW	DOCOL
-	DW	PAD
-	DW	LIT,22H		; ( 34 bytes )
-	DW	BLANK
 	DW	DUPE
 	DW	PFA
 	DW	LFA
