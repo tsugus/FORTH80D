@@ -12,7 +12,7 @@
 ; *                       i8086 & MS-DOS                       *
 ; *                                                            *
 ; *                                                            *
-; *                       Version 0.5.5                        *
+; *                       Version 0.5.6                        *
 ; *                                                            *
 ; *                                                            *
 ; *                                       (C) 2023-2024 Tsugu  *
@@ -172,7 +172,7 @@ WRM1	DW	WARM
 ;
 UVR	DW	0		; (release No.)
 	DW	5		; (revision No.)
-	DW	0500H		; (user version)
+	DW	0600H		; (user version)
 	DW	INITS0		; S0
 	DW	INITR0		; R0
 	DW	INITS0		; TIB
@@ -195,7 +195,7 @@ UVR	DW	0		; (release No.)
 	DW	0		; CSP
 	DW	0		; R#
 	DW	0		; HLD
-	DW	0		; PFLAG
+UVREND	DW	0		; PFLAG
 ;
 ; ***** INTERFACE (for MS-DOS) *****
 ; take a type-state of keybord
@@ -737,7 +737,7 @@ TCON	DW	DOCOL
 	DW	CON
 	DW	COMMA
 	DW	PSCOD
-DOTCON:	INC	DX
+	INC	DX
 	MOV	BX,DX
 	MOV	AX,[BX]
 	MOV	DX,2[BX]
@@ -750,7 +750,7 @@ TVAR	DW	DOCOL
 	DW	VAR
 	DW	ZERO
 	DW	COMMA
-DOTVAR:	INC	DX
+	INC	DX
 	PUSH	DX
 	JMP	NEXT
 ;
@@ -807,7 +807,7 @@ CREAT	DW	DOCOL
 COLD	DW	DOCOL
 	DW	LIT,UVR		; Set user variables.
 	DW	UPP		; UP ( constant )
-	DW	LIT,52		; 52 ( 26 variables * 2 bytes )
+	DW	LIT,UVREND-UVR+2
 	DW	CMOVEE
 	DW	EMPBUF
 	DW	ABORT
@@ -3530,11 +3530,11 @@ SCODE	DW	DOCOL
 	DW	ASSEM		; [COMPILE] ASSEMBLER
 	DW	SEMIS
 ;
-; ( --- )
+; ( --- ; Exit FORTH. )
 	DB	83H,'BY','E'+80H
 	DW	SCODE-8
 BYE	DW	$+2
-	INT	20H		; Exit program.
+	INT	20H
 ;
 ; ( --- n )
 	DB	84H,'LIS','T'+80H
