@@ -12,7 +12,7 @@
 ; *                       i8086 & MS-DOS                       *
 ; *                                                            *
 ; *                                                            *
-; *                       Version 0.5.6                        *
+; *                       Version 0.5.7                        *
 ; *                                                            *
 ; *                                                            *
 ; *                                       (C) 2023-2024 Tsugu  *
@@ -172,7 +172,7 @@ WRM1	DW	WARM
 ;
 UVR	DW	0		; (release No.)
 	DW	5		; (revision No.)
-	DW	0600H		; (user version)
+	DW	0700H		; (user version)
 	DW	INITS0		; S0
 	DW	INITR0		; R0
 	DW	INITS0		; TIB
@@ -3296,6 +3296,7 @@ MESS	DW	DOCOL
 	DW	SLASH
 	DW	SUBB
 	DW	DLINE
+	DW	SPACE
 				;  THEN
 MESS3	DW	BRAN,MESS2-$	; ELSE
 MESS1	DW	PDOTQ
@@ -3428,7 +3429,6 @@ PCREAT	DW	DOCOL
 	DW	IDDOT
 	DW	LIT,4H
 	DW	MESS
-	DW	SPACE
 				; THEN
 PCREA1	DW	HERE
 	DW	DUPE
