@@ -12,7 +12,7 @@
 ; *                       i8086 & MS-DOS                       *
 ; *                                                            *
 ; *                                                            *
-; *                       Version 0.5.7                        *
+; *                       Version 0.5.8                        *
 ; *                                                            *
 ; *                                                            *
 ; *                                       (C) 2023-2024 Tsugu  *
@@ -172,7 +172,7 @@ WRM1	DW	WARM
 ;
 UVR	DW	0		; (release No.)
 	DW	5		; (revision No.)
-	DW	0700H		; (user version)
+	DW	0800H		; (user version)
 	DW	INITS0		; S0
 	DW	INITR0		; R0
 	DW	INITS0		; TIB
@@ -3530,15 +3530,9 @@ SCODE	DW	DOCOL
 	DW	ASSEM		; [COMPILE] ASSEMBLER
 	DW	SEMIS
 ;
-; ( --- ; Exit FORTH. )
-	DB	83H,'BY','E'+80H
-	DW	SCODE-8
-BYE	DW	$+2
-	INT	20H
-;
 ; ( --- n )
 	DB	84H,'LIS','T'+80H
-	DW	BYE-6
+	DW	SCODE-8
 LIST	DW	DOCOL
 	DW	BASE
 	DW	ATT
@@ -3588,9 +3582,15 @@ LIST1	DW	CR
 	DW	STORE
 	DW	SEMIS
 ;
+; ( --- ; Exit FORTH. )
+	DB	83H,'BY','E'+80H
+	DW	LIST-7
+BYE	DW	$+2
+	INT	20H
+;
 ; ( --- )
 	DB	8BH,'79-STANDAR','D'+80H
-	DW	LIST-7
+	DW	BYE-6
 STAN79	DW	DOCOL
 	DW	SEMIS
 ;
