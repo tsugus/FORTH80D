@@ -1,30 +1,43 @@
-; **************************************************************
-; *                                                            *
-; *                                                            *
-; *                   F  O  R  T  H  8  0  D                   *
-; *                                                            *
-; *                                                            *
-; *                 A FORTH langage proccessor                 *
-; *               conformiting FORTH-79 Standard               *
-; *                                                            *
-; *                            for                             *
-; *                                                            *
-; *                       i8086 & MS-DOS                       *
-; *                                                            *
-; *                                                            *
-; *                       Version 0.5.8                        *
-; *                                                            *
-; *                                                            *
-; *                                       (C) 2023-2024 Tsugu  *
-; *                                                            *
-; *                                                            *
-; *            This software is released under the             *
-; *                                                            *
-; *                        MIT License.                        *
-; *     (https://opensource.org/licenses/mit-license.php)      *
-; *                                                            *
-; *                                                            *
-; **************************************************************
+; ************************************************************
+; *                                                          *
+; *                                                          *
+; *                  F  O  R  T  H  8  0  D                  *
+; *                                                          *
+; *                                                          *
+; *                A FORTH langage proccessor                *
+; *              conformiting FORTH-79 Standard              *
+; *                                                          *
+; *                           for                            *
+; *                                                          *
+; *                      i8086 & MS-DOS                      *
+; *                                                          *
+; *                      Version 0.5.9                       *
+; *                                                          *
+; *                                     (C) 2023-2024 Tsugu  *
+; *                                                          *
+; *                                                          *
+; *           This software is released under the            *
+; *                                                          *
+; *                       MIT License.                       *
+; *    (https://opensource.org/licenses/mit-license.php)     *
+; *                                                          *
+; ************************************************************
+;
+; ***** Comment Notations *****
+;
+; X <- Y	: assign Y to X
+;
+; {X}		: the 8-bit memory of address X
+; 		  Not a value itself !
+; 		  The {X} to which you assign is a variable.
+; 		  The {X} which you assign is a value.
+;
+; [X]		: the 16-bit memory of address X
+; 		  [X] = {X+1} * 256 + {x}
+;
+; [X] <- [Y]	: {X+1} <- {Y+1} and {Y} <- {X}
+;
+; ***** Registers Set ******
 ;
 ; 				FORTH	8086
 ; Instruction Pointer		IP	SI
@@ -32,8 +45,8 @@
 ; Return stack Pointer		RP	BP
 ; Working register		W	DX
 ;
-; stack		:	|[INITS0-2] ... [SI+4] [SI+2] [SI]
-; return stack	:	|[INITR0-2] ... [BP+4] [BP+2] [BP]
+; stack		:	|[INITS0-2] ... [IP+4] [IP+2] [IP]
+; return stack	:	|[INITR0-2] ... [RP+4] [RP+2] [RP]
 ;
 ; ***** Memory Map *****
 ;
@@ -68,7 +81,7 @@
 ;               |   .   |
 ;               |   .   |
 ;               | ----- |
-;          BP  ^|   .   |     return stack pointer (go upper)
+;          RP  ^|   .   |     return stack pointer (go upper)
 ;               |   .   |
 ;               | 7BB6H |     bottom of return stack
 ;               |=======|
@@ -123,17 +136,19 @@ BFLEN0	EQU	BBUF0+4		; buffer tags length = 4
 LIMIT0	EQU	8000H
 NUMBU0	EQU	2		; number of disk block buffers
 FIRST0	EQU	LIMIT0-BFLEN0*NUMBU0
-UP	EQU	FIRST0-40H	; user variables area size = 40H
+UP	EQU	FIRST0-40H	; user variables area size
+				;                        = 40H
 INITR0	EQU	UP
 INITS0	EQU	INITR0-0A0H	; return stack size = A0H
 ;
 MXTOKN	EQU	34		; max bytes of tokens
 				;  (On 2-base,
-				;  'length' + '-' + "16-digits" + '.' + "16-digits")
+				;  'length' + '-'
+				;    + "16-digits"
+				;    + '.' + "16-digits")
 WRDBSZ	EQU	64+6		; word buffer size ( > C/L)
 PADSZ	EQU	80+1		; PAD size
 TMPBSZ	EQU	WRDBSZ+PADSZ	; temporary buffer area size
-;
 ;
 ; ***************************************
 ;
@@ -172,7 +187,7 @@ WRM1	DW	WARM
 ;
 UVR	DW	0		; (release No.)
 	DW	5		; (revision No.)
-	DW	0800H		; (user version)
+	DW	0900H		; (user version)
 	DW	INITS0		; S0
 	DW	INITR0		; R0
 	DW	INITS0		; TIB
@@ -198,31 +213,36 @@ UVR	DW	0		; (release No.)
 UVREND	DW	0		; PFLAG
 ;
 ; ***** INTERFACE (for MS-DOS) *****
-; take a type-state of keybord
+;
+; ( --- f ; Take a type-state of keybord. )
 CTST	DW	$+2
 	MOV	AH,0BH	; Is Type Ahead Buffer empty? Or not?
 	INT	21H	; AL=00H or FFH
 	AND	AX,1
 	JMP	APUSH
-; input one character from keybord
+;
+; ( --- c ; Input one character from keybord. )
 CIN	DW	$+2
 	MOV	AH,7
 	INT	21H
 	XOR	AH,AH
 	JMP	APUSH
-; output one character to console
+;
+; ( c --- ; Output one character to console. )
 COUT	DW	$+2
 	POP	DX
 	MOV	AH,2
 	INT	21H
 	JMP	NEXT
-; output one character to printer
+;
+; ( c --- ; Output one character to printer. )
 POUT	DW	$+2
 	POP	DX
 	MOV	AH,5
 	INT	21H
 	JMP	NEXT
-; read one sector on a disk
+;
+; ( secNo bufAddr drvNo --- errFlg ; Read a sector on disks. )
 READ	DW	$+2
 	POP	DX	; starting logical sector
 	MOV	CX,1	; number of sectors
@@ -235,7 +255,8 @@ READ	DW	$+2
 	POP	SI
 	POP	BP
 	JMP	APUSH
-; write one sector on a disk
+;
+; ( secNo bufAddr drvNo --- errFLg ; Write a sector on disks. )
 WRITE	DW	$+2
 	POP	DX	; starting logical sector
 	MOV	CX,1	; number of sectors
@@ -283,16 +304,16 @@ NEXT1:	MOV	DX,BX		; DX=BX
 ;     Compilation F. A. |  DOCOL  | or DOCON, DOVAL,
 ;                       |   (:)   |       DOUSE, DOVOC
 ;                       |=========|
-;      Paramatere F. A. |(word 1) | -> PFA 1
+;       Parameter F. A. | (word 1)| -> PFA 1
 ;                       |         |
 ;                       |---------|
-;                       |(word 2) | -> PFA 2
+;                       | (word 2)| -> PFA 2
 ;                       |         |
 ;                       |---------|
 ;                       |    .    |
 ;                       |    .    |
 ;                       |---------|
-;                       |(word n) | -> PFA n
+;                       | (word n)| -> PFA n
 ;                       |         |
 ;                       |---------|
 ;                       |  SEMIS  | -> PFA of ";S"
@@ -303,28 +324,28 @@ NEXT1:	MOV	DX,BX		; DX=BX
 ;
 ; 	===== core words =====
 ;
-; ( --- n ) <n>
+; ( --- n ; n = [IP] )
 	DB	83H,'LI','T'+80H
 	DW	0	; end of dictionary
 LIT	DW	$+2	; the address here + 2
 	LODSW		; AX=[SI]; SI+=2
 	JMP	APUSH
 ;
-; ( cfa --- )
+; ( cfa --- ; PC <- [cfa] )
 	DB	87H,'EXECUT','E'+80H
 	DW	LIT-6
 EXEC	DW	$+2
 	POP	BX	; BX=a
 	JMP	NEXT1
 ;
-; ( --- ) <n>
+; ( --- ; Jump to [IP+2]. )
 	DB	86H,'BRANC','H'+80H
 	DW	EXEC-10
 BRAN	DW	$+2
 BRAN1:	ADD	SI,[SI]	; SI+=[SI]
 	JMP	NEXT
 ;
-; ( f --- ) <n>
+; ( f --- ; Jump to [IP+2] if f == 0. )
 	DB	87H,'0BRANC','H'+80H
 	DW	BRAN-9
 ZBRAN	DW	$+2
@@ -335,7 +356,7 @@ ZBRAN	DW	$+2
 	INC	SI
 	JMP	NEXT
 ;
-; ( --- )
+; ( --- ; [RP]++, jump to [IP] if [RP] < [RP+2]. )
 	DB	86H,'(LOOP',')'+80H
 	DW	ZBRAN-10
 XLOOP	DW	$+2
@@ -350,7 +371,7 @@ XLOOP1:	ADD	[BP],BX
 	INC	SI
 	JMP	NEXT
 ;
-; ( n  --- )
+; ( n  --- ; [RP]+=n, jump to [IP] if [RP] < [RP+2]. )
 	DB	87H,'(+LOOP',')'+80H
 	DW	XLOOP-9
 XPLOO	DW	$+2
@@ -426,7 +447,7 @@ RPSTO	DW	$+2
 	MOV	BP,8[BX]	; BP=[BX+8]
 	JMP	NEXT
 ;
-; ( --- )
+; ( --- ; IP <- pop from Return Stack. )
 	DB	82H,';','S'+80H
 	DW	RPSTO-6
 SEMIS	DW	$+2
@@ -461,7 +482,7 @@ RAT	DW	$+2
 	MOV	AX,[BP]
 	JMP	APUSH
 ;
-; ( n --- f )
+; ( n --- f ; n = 0 ? )
 	DB	82H,'0','='+80H
 	DW	RAT-5
 ZEQU	DW	$+2
@@ -600,7 +621,7 @@ TDIV	DW	$+2
 	SAR	AX,1	; AX>>1 (arithmetic!!)
 	JMP	APUSH
 ;
-; ( a b --- ; b is 8-bit pattern. )
+; ( a b --- ; {a} <- {a} & b )
 	DB	86H,'TOGGL','E'+80H
 	DW	TDIV-5
 TOGGL	DW	$+2
@@ -609,7 +630,7 @@ TOGGL	DW	$+2
 	XOR	[BX],AL
 	JMP	NEXT
 ;
-; ( a --- n ; fetch )
+; ( a --- n ; n = [a] )
 	DB	81H,'@'+80H
 	DW	TOGGL-9
 ATT	DW	$+2
@@ -617,7 +638,7 @@ ATT	DW	$+2
 	MOV	AX,[BX]
 	JMP	APUSH
 ;
-; ( n a --- ; store )
+; ( n a --- ; [a] <- n )
 	DB	81H,'!'+80H
 	DW	ATT-4
 STORE	DW	$+2
@@ -626,7 +647,7 @@ STORE	DW	$+2
 	MOV	[BX],AX
 	JMP	NEXT
 ;
-; ( b a --- )
+; ( c a --- ; {a} <- c )
 	DB	82H,'C','!'+80H
 	DW	STORE-4
 CSTOR	DW	$+2
@@ -635,8 +656,8 @@ CSTOR	DW	$+2
 	MOV	[BX],AL
 	JMP	NEXT
 ;
-; ( a1 a2 n --- )
-; [a2]=[a1], [a2+1]=[a1+1], ...., [a2+n-1]=[a1+n-1]
+; ( a1 a2 n --- ; n bytes copy )
+; {a2}={a1}, {a2+1}={a1+1}, ...., {a2+n-1}={a1+n-1}
 	DB	85H,'CMOV','E'+80H
 	DW	CSTOR-5
 CMOVEE	DW	$+2
@@ -651,8 +672,8 @@ CMOVEE	DW	$+2
 	MOV	SI,BX
 	JMP	NEXT
 ;
-; ( a1 a2 n --- )
-; [a2+n-1]=[a1+n-1], [a2+n-2]=[a1+n-2], ...., [a2]=[a1]
+; ( a1 a2 n --- ; reverse n bytes copy )
+; {a2+n-1}={a1+n-1}, {a2+n-2}={a1+n-2}, ...., {a2}={a1}
 	DB	86H,'<CMOV','E'+80H
 	DW	CMOVEE-8
 LCMOVE	DW	$+2
@@ -672,7 +693,7 @@ LCMOVE	DW	$+2
 	MOV	SI,BX
 	JMP	NEXT
 ;
-; ( a n b --- )
+; ( a n c --- ; Fill the n bytes on or after a with b. )
 ; Fill from address a to address a+n-1 with byte b.
 	DB	84H,'FIL','L'+80H
 	DW	LCMOVE-9
@@ -737,7 +758,7 @@ TCON	DW	DOCOL
 	DW	CON
 	DW	COMMA
 	DW	PSCOD
-	INC	DX
+DOTCON:	INC	DX
 	MOV	BX,DX
 	MOV	AX,[BX]
 	MOV	DX,2[BX]
@@ -750,7 +771,8 @@ TVAR	DW	DOCOL
 	DW	VAR
 	DW	ZERO
 	DW	COMMA
-	INC	DX
+	DW	PSCOD
+DOTVAL:	INC	DX
 	PUSH	DX
 	JMP	NEXT
 ;
@@ -2255,7 +2277,7 @@ HERE	DW	DOCOL
 	DW	HERE-7
 PAD	DW	DOCOL
 	DW	HERE
-	DW	LIT,44H
+	DW	LIT,WRDBSZ
 	DW	PLUS
 	DW	SEMIS
 ;
