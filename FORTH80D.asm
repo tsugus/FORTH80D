@@ -11,7 +11,7 @@
 ; *                                                          *
 ; *                      i8086 & MS-DOS                      *
 ; *                                                          *
-; *                      Version 0.5.9                       *
+; *                      Version 0.5.10                      *
 ; *                                                          *
 ; *                                     (C) 2023-2024 Tsugu  *
 ; *                                                          *
@@ -187,7 +187,7 @@ WRM1	DW	WARM
 ;
 UVR	DW	0		; (release No.)
 	DW	5		; (revision No.)
-	DW	0900H		; (user version)
+	DW	0A00H		; (user version)
 	DW	INITS0		; S0
 	DW	INITR0		; R0
 	DW	INITS0		; TIB
@@ -693,8 +693,7 @@ LCMOVE	DW	$+2
 	MOV	SI,BX
 	JMP	NEXT
 ;
-; ( a n c --- ; Fill the n bytes on or after a with b. )
-; Fill from address a to address a+n-1 with byte b.
+; ( a n b --- ; Fill the n bytes on or after a with b. )
 	DB	84H,'FIL','L'+80H
 	DW	LCMOVE-9
 FILL	DW	$+2
@@ -1264,7 +1263,7 @@ ENCL3	DW	TDUP
 				;  THEN
 ENCL6	DW	ZBRAN,ENCL4-$	; WHILE
 	DW	ONEP
-	DW	BRAN,ENCL3-$	; REPEAT ( [n1],[n2] aren't null )
+	DW	BRAN,ENCL3-$	; REPEAT ( [n1],[n2] <> null )
 ENCL4	DW	SWAP
 	DW	DROP
 	DW	OVER
@@ -1277,7 +1276,8 @@ ENCL4	DW	SWAP
 	DW	ONEP		; ( a n1 n2 n2+1 )
 	DW	SEMIS
 ;
-; ( a1 a2 --- a / ff ; Search a FORCE WORD in the FORTH DICTONARY. )
+; ( a1 a2 --- a / ff ;
+;             Search a FORCE WORD in the FORTH DICTONARY. )
 ; a1: top address of text string searched
 ; a2: NFA at which start searching
 ; a : CFA of the found word
@@ -2422,7 +2422,7 @@ IMMED	DW	DOCOL
 	DW	IMMED-12
 VOCAB	DW	DOCOL
 	DW	CREAT
-	DW	LIT,0A081H	; "blank" word (= DB 81H,' '+80H)
+	DW	LIT,0A081H	; "blank" word (= 81H,' '+80H)
 	DW	COMMA
 	DW	CURR
 	DW	ATT
@@ -2445,7 +2445,7 @@ DOVOC:	JMP	XDOES
 	DB	0C5H,'FORT','H'+80H
 	DW	VOCAB-13
 FORTH	DW	DOVOC
-	DW	0A081H		; "blank" word (= DB 81H,' '+80H)
+	DW	0A081H		; "blank" word (= 81H,' '+80H)
 	DW	STAN79-14	; latest word
 	DW	0
 ;
@@ -2807,7 +2807,7 @@ WORDS2	DW	INN
 	DW	SWAP
 	DW	ENCL
 	DW	HERE
-	DW	LIT,MXTOKN+2	; ( include a length byte and "margin" )
+	DW	LIT,MXTOKN+2
 	DW	BLANK
 	DW	INN
 	DW	PSTOR
@@ -3033,7 +3033,7 @@ UPDAT	DW	DOCOL
 	DW	PREV
 	DW	ATT
 	DW	ATT
-	DW	LIT,8000H	; ( Set the most significant bit. )
+	DW	LIT,8000H	; ( Set the MSB. )
 	DW	ORR
 	DW	PREV
 	DW	ATT
@@ -3267,7 +3267,7 @@ ABORT	DW	DOCOL
 ;-------------------------------------------
 	DW	CR
 	DW	PDOTQ
-	DB	14,'FORTH80D Ver. '
+	DB	17,'FORTH80D Version '
 	DW	TUVR
 	DW	ATT		; release No.
 	DW	ZERO,ZERO,DDOTR	; U. without spaces
@@ -3517,7 +3517,7 @@ DOTES1	DW	SEMIS
 	DB	0C9H,'ASSEMBLE','R'+80H
 	DW	DOTES-5
 ASSEM	DW	DOVOC
-	DW	0A081H		; "blank" word (DB 81H,' '+80H)
+	DW	0A081H		; "blank" word (= 81H,' '+80H)
 	DW	STAN79-14
 	DW	FORTH+6
 ;
