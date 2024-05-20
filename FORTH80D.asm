@@ -242,7 +242,7 @@ POUT	DW	$+2
 	INT	21H
 	JMP	NEXT
 ;
-; ( secNo bufAddr drvNo --- errFlg ; Read a sector on disks. )
+; ( drvNo bufAddr secNo --- errFlg ; Read a sector on disks. )
 READ	DW	$+2
 	POP	DX	; starting logical sector
 	MOV	CX,1	; number of sectors
@@ -256,7 +256,7 @@ READ	DW	$+2
 	POP	BP
 	JMP	APUSH
 ;
-; ( secNo bufAddr drvNo --- errFLg ; Write a sector on disks. )
+; ( drvNo bufAddr secNo --- errFLg ; Write a sector on disks. )
 WRITE	DW	$+2
 	POP	DX	; starting logical sector
 	MOV	CX,1	; number of sectors
