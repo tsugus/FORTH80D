@@ -11,7 +11,7 @@
 ; *                                                          *
 ; *                      i8086 & MS-DOS                      *
 ; *                                                          *
-; *                      Version 0.5.10                      *
+; *                      Version 0.6.0                       *
 ; *                                                          *
 ; *                                     (C) 2023-2024 Tsugu  *
 ; *                                                          *
@@ -75,20 +75,20 @@
 ;               | ----- |
 ;          SP  ^|   .   |     stack pointer (go upper)
 ;               |   .   |
-;               | 7B16H |     bottom of stack
+;               | 7716H |     bottom of stack
 ;               |=======|
-; INITS0, TIB ->| 7B18H |     terminal input buffer
+; INITS0, TIB ->| 7718H |     terminal input buffer
 ;               |   .   |
 ;               |   .   |
 ;               | ----- |
 ;          RP  ^|   .   |     return stack pointer (go upper)
 ;               |   .   |
-;               | 7BB6H |     bottom of return stack
+;               | 77B6H |     bottom of return stack
 ;               |=======|
-;  INITR0, UP ->| 7BB8H |     top of user variables area
+;  INITR0, UP ->| 77B8H |     top of user variables area
 ;               |   :   |
 ;               |=======|
-;       FIRST ->| 7BF8H |     top of disk buffers
+;       FIRST ->| 77F8H |     top of disk buffers
 ;               |   :   |
 ;               | 7FFEH |     bottom of disk buffers
 ;               |=======|
@@ -102,7 +102,7 @@
 ;               |           |   |
 ;               |           |   |
 ;               |           |   |
-;       buffer1 |    DATA   |  512 bytes
+;       buffer1 |    DATA   |  1024 bytes
 ;               ~           ~   |
 ;               ~           ~   |
 ;               |           |   |
@@ -114,7 +114,7 @@
 ;               |           |   |
 ;               |           |   |
 ;               |           |   |
-;       buffer2 |    DATA   |  512 bytes
+;       buffer2 |    DATA   |  1024 bytes
 ;               ~           ~   |
 ;               ~           ~   |
 ;               |           |   |
@@ -126,12 +126,13 @@
 ; ========== ENVIRONMENT DEPENDENT ==========
 ;
 DRSIZ	EQU	720		; drive size (KB)
+BPS	EQU	512		; bytes per sector
 ;
 ; ***** System Memory Configuration *****
 ;
 ORIG0	EQU	100H
-BBUF0	EQU	200H		; bytes per buffer
-BSCR0	EQU	2		; blocks per screen
+BBUF0	EQU	1024		; bytes per buffer
+BSCR0	EQU	1		; blocks per screen
 BFLEN0	EQU	BBUF0+4		; buffer tags length = 4
 LIMIT0	EQU	8000H
 NUMBU0	EQU	2		; number of disk block buffers
@@ -186,8 +187,8 @@ WRM1	DW	WARM
 ; ***** USER VARIABLES *****
 ;
 UVR	DW	0		; (release No.)
-	DW	5		; (revision No.)
-	DW	0A00H		; (user version)
+	DW	6		; (revision No.)
+	DW	0000H		; (user version xx[Alpahbet])
 	DW	INITS0		; S0
 	DW	INITR0		; R0
 	DW	INITS0		; TIB
@@ -757,7 +758,7 @@ TCON	DW	DOCOL
 	DW	CON
 	DW	COMMA
 	DW	PSCOD
-DOTCON:	INC	DX
+	INC	DX
 	MOV	BX,DX
 	MOV	AX,[BX]
 	MOV	DX,2[BX]
@@ -771,7 +772,7 @@ TVAR	DW	DOCOL
 	DW	ZERO
 	DW	COMMA
 	DW	PSCOD
-DOTVAL:	INC	DX
+	INC	DX
 	PUSH	DX
 	JMP	NEXT
 ;
@@ -872,23 +873,89 @@ EMIT2	DW	SEMIS
 ; ( n1 a n2 --- ef ; 1 block only )
 ; n1: drive number
 ; a : address of disk buffer
-; n2: reading block (sector)
+; n2: reading block
 ; ef: error flag (0 or -1)
 	DB	88H,'READ-RE','C'+80H
 	DW	EMIT-7
 RREC	DW	DOCOL
-	DW	READ
+	DW	LIT,BBUF0/BPS
+	DW	STAR
+	DW	LIT,BBUF0/BPS
+	DW	ZERO
+	DW	XDO		; DO
+RREC1	DW	THREE
+	DW	PICK
+	DW	THREE
+	DW	PICK
+	DW	THREE
+	DW	PICK		;  copy 3 values
+	DW	READ		;  ( n1 a n2' ef )
+	DW	DUPE
+	DW	ZBRAN,RREC2-$	;  IF ( n1 a n2' ef )
+	DW	LLEAVE
+	DW	BRAN,RREC3-$	;  ELSE ( n1 a n2' ef )
+RREC2	DW	IDO
+	DW	ONEP
+	DW	LIT,BBUF0/BPS
+	DW	LESS
+	DW	ZBRAN,RREC3-$	;   IF ( n1 a n2' ef )
+	DW	DROP		;    ( n1 a n2' )
+	DW	SWAP
+	DW	LIT,BPS
+	DW	PLUS
+	DW	SWAP
+	DW	ONEP		;    ( n1 a+128 n2'+1 )
+				;   THEN
+				;  THEN
+RREC3	DW	XLOOP,RREC1-$	; LOOP
+	DW	TOR
+	DW	TDROP
+	DW	DROP
+	DW	FROMR
 	DW	SEMIS
 ;
 ; ( n1 a n2 --- ef ; 1 block only )
 ; n1: drive number
 ; a : address of disk buffer
-; n2: writing block (sector)
+; n2: writing block
 ; ef: error flag (0 or 1)
 	DB	89H,'WRITE-RE','C'+80H
 	DW	RREC-11
 WREC	DW	DOCOL
-	DW	WRITE
+	DW	LIT,BBUF0/BPS
+	DW	STAR
+	DW	LIT,BBUF0/BPS
+	DW	ZERO
+	DW	XDO		; DO
+WREC1	DW	THREE
+	DW	PICK
+	DW	THREE
+	DW	PICK
+	DW	THREE
+	DW	PICK		;  copy 3 values
+	DW	WRITE		;  ( n1 a n2' ef )
+	DW	DUPE
+	DW	ZBRAN,WREC2-$	;  IF ( n1 a n2' ef )
+	DW	LLEAVE
+	DW	BRAN,WREC3-$	;  ELSE ( n1 a n2' ef )
+WREC2	DW	IDO
+	DW	ONEP
+	DW	LIT,BBUF0/BPS
+	DW	LESS
+	DW	ZBRAN,WREC3-$	;   IF ( n1 a n2' ef )
+	DW	DROP		;    ( n1 a n2' )
+	DW	SWAP
+	DW	LIT,BPS
+	DW	PLUS
+	DW	SWAP
+	DW	ONEP		;    ( n1 a+128 n2'+1 )
+				;   THEN
+				;  THEN
+WREC3	DW	XLOOP,WREC1-$	; LOOP
+	DW	TOR
+	DW	TDROP
+	DW	DROP
+	DW	FROMR
 	DW	SEMIS
 ;
 ; 	===== constants =====
@@ -1283,99 +1350,99 @@ ENCL4	DW	SWAP
 ; a : CFA of the found word
 ; ff: false flag
 ; ***** ASSEMBLY VERSION *****
-;	DB	86H,'(FIND',')'+80H
-;	DW	ENCL-10
-;PFIND	DW	$+2
-;	MOV	AX,DS
-;	MOV	ES,AX
-;	POP	BX	; a2
-;	POP	CX	; a1
-;PFIN1:	MOV	DI,CX
-;	MOV	AL,[BX]
-;	MOV	DL,AL
-;	XOR	AL,[DI]
-;	AND	AL,3FH
-;	JNZ	PFIN3
-;PFIN2:	INC	BX
-;	INC	DI
-;	MOV	AL,[BX]
-;	XOR	AL,[DI]
-;	ADD	AL,AL
-;	JNZ	PFIN3
-;	JNB	PFIN2	; when carry flag == 0
-;	ADD	BX,3	; Compute CFA
-;	PUSH	BX	; a
-;	JMP	NEXT
-;PFIN3:	INC	BX
-;	JB	PFIN4	; when carry flag == 1
-;	MOV	AL,[BX]
-;	ADD	AL,AL
-;	JMP	PFIN3
-;PFIN4:	MOV	BX,[BX]
-;	OR	BX,BX
-;	JNZ	PFIN1
-;	MOV	AX,0	; ff
-;	JMP	APUSH
-; ****************************
 	DB	86H,'(FIND',')'+80H
 	DW	ENCL-10
-PFIND	DW	DOCOL
+PFIND	DW	$+2
+	MOV	AX,DS
+	MOV	ES,AX
+	POP	BX	; a2
+	POP	CX	; a1
+PFIN1:	MOV	DI,CX
+	MOV	AL,[BX]
+	MOV	DL,AL
+	XOR	AL,[DI]
+	AND	AL,3FH
+	JNZ	PFIN3
+PFIN2:	INC	BX
+	INC	DI
+	MOV	AL,[BX]
+	XOR	AL,[DI]
+	ADD	AL,AL
+	JNZ	PFIN3
+	JNB	PFIN2	; when carry flag == 0
+	ADD	BX,3	; Compute CFA
+	PUSH	BX	; a
+	JMP	NEXT
+PFIN3:	INC	BX
+	JB	PFIN4	; when carry flag == 1
+	MOV	AL,[BX]
+	ADD	AL,AL
+	JMP	PFIN3
+PFIN4:	MOV	BX,[BX]
+	OR	BX,BX
+	JNZ	PFIN1
+	MOV	AX,0	; ff
+	JMP	APUSH
+; ****************************
+;	DB	86H,'(FIND',')'+80H
+;	DW	ENCL-10
+;PFIND	DW	DOCOL
 				; BEGIN
-PFIND1	DW	OVER
-	DW	TDUP
-	DW	CAT
-	DW	SWAP
-	DW	CAT
-	DW	LIT,3FH
-	DW	ANDD		;  ( length and smudge bits )
-	DW	EQUAL
-	DW	ZBRAN,PFIND2-$	;  IF
+;PFIND1	DW	OVER
+;	DW	TDUP
+;	DW	CAT
+;	DW	SWAP
+;	DW	CAT
+;	DW	LIT,3FH
+;	DW	ANDD		;  ( length and smudge bits )
+;	DW	EQUAL
+;	DW	ZBRAN,PFIND2-$	;  IF
 				;   BEGIN
-PFIND4	DW	ONEP
-	DW	SWAP
-	DW	ONEP
-	DW	SWAP
-	DW	TDUP
-	DW	CAT
-	DW	SWAP
-	DW	CAT
-	DW	NEQ
-	DW	ZBRAN,PFIND4-$	;   UNTIL
-	DW	CAT
-	DW	OVER
-	DW	CAT
-	DW	LIT,7FH
-	DW	ANDD
-	DW	EQUAL
-	DW	ZBRAN,PFIND5-$	;   IF ( found )
-	DW	SWAP
-	DW	DROP
-	DW	THREE
-	DW	PLUS
-	DW	SEMIS		;    EXIT
+;PFIND4	DW	ONEP
+;	DW	SWAP
+;	DW	ONEP
+;	DW	SWAP
+;	DW	TDUP
+;	DW	CAT
+;	DW	SWAP
+;	DW	CAT
+;	DW	NEQ
+;	DW	ZBRAN,PFIND4-$	;   UNTIL
+;	DW	CAT
+;	DW	OVER
+;	DW	CAT
+;	DW	LIT,7FH
+;	DW	ANDD
+;	DW	EQUAL
+;	DW	ZBRAN,PFIND5-$	;   IF ( found )
+;	DW	SWAP
+;	DW	DROP
+;	DW	THREE
+;	DW	PLUS
+;	DW	SEMIS		;    EXIT
 				;   THEN
-PFIND5	DW	ONEM
-	DW	BRAN,PFIND3-$	;  ELSE
-PFIND2	DW	DROP
+;PFIND5	DW	ONEM
+;	DW	BRAN,PFIND3-$	;  ELSE
+;PFIND2	DW	DROP
 				;  THEN ( next word )
 				;  BEGIN
-PFIND3	DW	ONEP
-	DW	DUPE
-	DW	CAT
-	DW	LIT,80H
-	DW	ANDD
-	DW	ZBRAN,PFIND3-$	;  UNTIL
-	DW	ONEP
-	DW	ATT
-	DW	DUPE
-	DW	LIT,0H
-	DW	EQUAL
-	DW	ZBRAN,PFIND6-$	;  IF ( last word )
-	DW	TDROP
-	DW	ZERO		;   ( unfound )
-	DW	SEMIS		;   EXIT
+;PFIND3	DW	ONEP
+;	DW	DUPE
+;	DW	CAT
+;	DW	LIT,80H
+;	DW	ANDD
+;	DW	ZBRAN,PFIND3-$	;  UNTIL
+;	DW	ONEP
+;	DW	ATT
+;	DW	DUPE
+;	DW	LIT,0H
+;	DW	EQUAL
+;	DW	ZBRAN,PFIND6-$	;  IF ( last word )
+;	DW	TDROP
+;	DW	ZERO		;   ( unfound )
+;	DW	SEMIS		;   EXIT
 				;  THEN
-PFIND6	DW	BRAN,PFIND1-$	; AGAIN
+;PFIND6	DW	BRAN,PFIND1-$	; AGAIN
 ;
 ; ( c n1 --- n2 tf / ff )
 ; c : character code
@@ -1391,48 +1458,48 @@ DIGIT	DW	DOCOL
 	DW	SUBB
 	DW	DUPE
 	DW	ZLESS
-	DW	ZBRAN,DIGIT1-$	; IF
+	DW	ZBRAN,DIGI1-$	; IF
 	DW	TDROP
 	DW	ZERO
-	DW	BRAN,DIGIT2-$	; ELSE
-DIGIT1	DW	DUPE
+	DW	BRAN,DIGI2-$	; ELSE
+DIGI1	DW	DUPE
 	DW	LIT,9H
 	DW	GREAT
-	DW	ZBRAN,DIGIT3-$	;  IF
+	DW	ZBRAN,DIGI3-$	;  IF
 	DW	LIT,7H		;   7 ( ":;<=>?@" )
 	DW	SUBB
 	DW	DUPE
 	DW	LIT,0AH
 	DW	LESS
-	DW	ZBRAN,DIGIT4-$	;   IF
+	DW	ZBRAN,DIGI4-$	;   IF
 	DW	TDROP
 	DW	ZERO
-	DW	BRAN,DIGIT5-$	;   ELSE
-DIGIT4	DW	TDUP
+	DW	BRAN,DIGI5-$	;   ELSE
+DIGI4	DW	TDUP
 	DW	GREAT
-	DW	ZBRAN,DIGIT6-$	;    IF
+	DW	ZBRAN,DIGI6-$	;    IF
 	DW	SWAP
 	DW	DROP
 	DW	ONE
-	DW	BRAN,DIGIT5-$	;    ELSE
-DIGIT6	DW	TDROP
+	DW	BRAN,DIGI5-$	;    ELSE
+DIGI6	DW	TDROP
 	DW	ZERO
 				;    THEN
 				;   THEN
-DIGIT5	DW	BRAN,DIGIT2-$	;  ELSE
-DIGIT3	DW	TDUP
+DIGI5	DW	BRAN,DIGI2-$	;  ELSE
+DIGI3	DW	TDUP
 	DW	GREAT
-	DW	ZBRAN,DIGIT7-$	;   IF
+	DW	ZBRAN,DIGI7-$	;   IF
 	DW	SWAP
 	DW	DROP
 	DW	ONE
-	DW	BRAN,DIGIT2-$	;   ELSE
-DIGIT7	DW	TDROP
+	DW	BRAN,DIGI2-$	;   ELSE
+DIGI7	DW	TDROP
 	DW	ZERO
 				;   THEN
 				;  THEN
 				; THEN
-DIGIT2	DW	SEMIS
+DIGI2	DW	SEMIS
 ;
 ; ( n --- -n )
 	DB	86H,'NEGAT','E'+80H
@@ -1548,7 +1615,7 @@ ZGREAT	DW	DOCOL
 ;
 ; ( u1 u2 --- f )
 	DB	82H,'U','<'+80H
-	DW	ZGREAT-4
+	DW	ZGREAT-5
 ULESS	DW	DOCOL
 	DW	TDUP
 	DW	XORR
@@ -3552,7 +3619,7 @@ SCODE	DW	DOCOL
 	DW	ASSEM		; [COMPILE] ASSEMBLER
 	DW	SEMIS
 ;
-; ( --- n )
+; ( n --- )
 	DB	84H,'LIS','T'+80H
 	DW	SCODE-8
 LIST	DW	DOCOL
