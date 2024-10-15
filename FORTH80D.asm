@@ -1336,7 +1336,7 @@ ENCL4	DW	SWAP
 	DW	SEMIS
 ;
 ; ( a1 a2 --- a / ff ;
-;             Search a FORCE WORD in the FORTH DICTONARY. )
+;             Search a FORCE WORD in the FORTH DICTIONARY. )
 ; a1: top address of text string searched
 ; a2: NFA at which start searching
 ; a : CFA of the found word
