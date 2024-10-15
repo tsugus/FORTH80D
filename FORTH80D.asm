@@ -4,8 +4,8 @@
 ; *                  F  O  R  T  H  8  0  D                  *
 ; *                                                          *
 ; *                                                          *
-; *                A FORTH langage proccessor                *
-; *              conformiting FORTH-79 Standard              *
+; *                A FORTH language processor                *
+; *               conforming FORTH-79 Standard               *
 ; *                                                          *
 ; *                           for                            *
 ; *                                                          *
@@ -107,7 +107,7 @@
 ;               ~           ~   |
 ;               |           |   |
 ;               |-----------| -----
-;               | 00H | 00H | double null charcters
+;               | 00H | 00H | double null characters
 ;               |===========|
 ;               | f |   n   |
 ;               |-----------| -----
@@ -187,7 +187,7 @@ WRM1	DW	WARM
 ;
 UVR	DW	0		; (release No.)
 	DW	7		; (revision No.)
-	DW	0000H		; (user version xx[Alpahbet])
+	DW	0000H		; (user version xx[Alphabet])
 	DW	INITS0		; S0
 	DW	INITR0		; R0
 	DW	INITS0		; TIB
@@ -214,14 +214,14 @@ UVREND	DW	0		; PFLAG
 ;
 ; ***** INTERFACE (for MS-DOS) *****
 ;
-; ( --- f ; Take a type-state of keybord. )
+; ( --- f ; Take a type-state of keyboard. )
 CTST	DW	$+2
 	MOV	AH,0BH	; Is Type Ahead Buffer empty? Or not?
 	INT	21H	; AL=00H or FFH
 	AND	AX,1
 	JMP	APUSH
 ;
-; ( --- c ; Input one character from keybord. )
+; ( --- c ; Input one character from keyboard. )
 CIN	DW	$+2
 	MOV	AH,7
 	INT	21H
